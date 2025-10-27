@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAPE</title>
+    <!-- Vis.js for graph visualization -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- D3.js for knowledge graph visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='tooltip-styles.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 侧边菜单栏 -->
+        <div class="sidebar">
+            <div class="sidebar-item active" id="chatMenuItem">
+                <div class="sidebar-item-icon">💬</div>
+                <div class="sidebar-item-text">Chat</div>
+            </div>
+            <div class="sidebar-item" id="notificationMenuItem">
+                <div class="sidebar-item-icon">🔔</div>
+                <div class="sidebar-item-text">Notification</div>
+            </div>
+            <div class="sidebar-item" id="scheduleMenuItem">
+                <div class="sidebar-item-icon">📅</div>
+                <div class="sidebar-item-text">Schedule</div>
+            </div>
+            <div class="sidebar-item" id="memoryMenuItem">
+                <div class="sidebar-item-icon">🧠</div>
+                <div class="sidebar-item-text">Memory Management</div>
+            </div>
+        </div>
+
+        <!-- 聊天视图 -->
+        <div class="chat-view" id="chatView">
+            <div class="chat-header">
+                Chat with TAPE
+            </div>
+            
+            <div class="main-content">
+                <!-- 左侧检索结果面板 -->
+                <div class="search-results-panel">
+                    <div class="search-results-header">
+                        <span>Memory Search Results</span>
+                        <div class="memory-buttons">
+                            <button class="memory-button active" id="vectorMemoryBtn">Vector-based Memory</button>
+                            <button class="memory-button" id="graphMemoryBtn">Graph-based Memory</button>
+                        </div>
+                    </div>
+                    <div class="search-results-content" id="searchResults">
+                        <div class="welcome-message" style="text-align: center; color: #888; padding: 40px 20px; font-size: 14px;">
+                            When you ask a question, relevant<br> database search results will appear here
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 右侧对话面板 -->
+                <div class="chat-panel">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="welcome-message">
+                            Please enter your message to start the conversation!
+                        </div>
+                    </div>
+                    
+                    <div class="typing-indicator" id="typingIndicator">
+                        <div class="typing-dots">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input">
+                        <input type="text" class="input-field" id="messageInput" placeholder="Enter your message..." maxlength="500">
+                        <button class="clear-button" id="clearButton">Clear</button>
+                        <button class="send-button" id="sendButton">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory页面 -->
+        <div class="memory-panel" id="memoryPanel">
+            <div class="memory-header">
+                Memory Management Center
+            </div>
+            
+            <!-- Memory导航按钮区域 -->
+            <div class="memory-navigation">
+                <button class="memory-nav-button active" id="memoryBankBtn">
+                    <span class="nav-button-text">Memory Repository</span>
+                </button>
+                <button class="memory-nav-button" id="importMemoryBtn">
+                    <span class="nav-button-text">Import Memory</span>
+                </button>
+            </div>
+            
+            <!-- Memory内容区域 -->
+            <div class="memory-main-content">
+                <!-- Memory Bank视图 -->
+                <div class="memory-view active" id="memoryBankView">
+                    <div class="memory-repository-container">
+                        <!-- 两栏式布局 -->
+                        <div class="repository-layout">
+                            <!-- 左侧知识图谱展示区 -->
+                            <div class="graph-panel">
+                                <div class="graph-panel-header">
+                                    <div class="header-left">
+                                        <h3>Temporal Knowledge Graph</h3>
+                                        <!-- 时间范围滑动条 - 移到标题右侧 -->
+                                        <div class="time-range-inline">
+                                            <div class="dual-range-slider-inline">
+                                                <input type="range" id="startTimeSlider" class="range-slider start-slider" min="0" max="100" value="0" step="1">
+                                                <input type="range" id="endTimeSlider" class="range-slider end-slider" min="0" max="100" value="100" step="1">
+                                                <div class="slider-track">
+                                                    <div class="slider-range" id="sliderRange"></div>
+                                                </div>
+                                            </div>
+                                            <div class="time-range-labels-inline">
+                                                <span class="time-label" id="startTimeLabel">May 01, 2025</span>
+                                                <span class="time-label" id="endTimeLabel">Today</span>
+                                            </div>
+                                            <button class="time-range-reset-inline" id="resetTimeRangeBtn" title="Reset time range">Reset</button>
+                                        </div>
+                                    </div>
+                                    <div class="graph-controls">
+                                        <div class="view-mode-container">
+                                            <button class="graph-control-btn active" id="flatViewBtn" title="Flat View">Flat</button>
+                                            <button class="graph-control-btn" id="layeredViewBtn" title="Layered View">Layered</button>
+                                            <div class="layer-options" id="layerOptions" style="display: none;">
+                                                <select id="layerModeSelect" class="layer-select">
+                                                    <option value="week">By Week</option>
+                                                    <option value="month" selected>By Month</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="search-container">
+                                            <button class="graph-control-btn" id="searchGraphBtn" title="Search Nodes">🔍</button>
+                                            <div class="search-input-container" id="searchInputContainer" style="display: none;">
+                                                <input type="text" id="nodeSearchInput" placeholder="Search node ID..." autocomplete="off">
+                                                <div class="search-suggestions" id="searchSuggestions"></div>
+                                            </div>
+                                        </div>
+                                        <button class="graph-control-btn" id="resetGraphBtn" title="Reset view">🔄</button>
+                                        <button class="graph-control-btn" id="fullscreenGraphBtn" title="Fullscreen">⛶</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="graph-container-main" id="mainGraphContainer">
+                                    <div class="graph-loading">
+                                        <div class="loading-spinner"></div>
+                                        <div class="loading-text">Loading knowledge graph...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 右侧详细信息展示区 -->
+                            <div class="details-panel">
+                                <div class="details-panel-header">
+                                    <h3>Element Details</h3>
+                                    <div class="details-controls">
+                                        <button class="details-control-btn" id="exportDetailsBtn" title="Export information">📤</button>
+                                        <button class="details-control-btn" id="refreshDetailsBtn" title="Refresh">🔄</button>
+                                    </div>
+                                </div>
+                                <div class="details-content" id="detailsContent">
+                                    <div class="no-selection">
+                                        <div class="no-selection-icon">👆</div>
+                                        <div class="no-selection-text">
+                                            <h4>Select a node or edge</h4>
+                                            <p>Click on any node or edge in the knowledge graph to view its detailed information here.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Import Memory视图 -->
+                <div class="memory-view" id="importMemoryView">
+                    <div class="import-memory-container">
+                        <div class="import-header">
+                            <h3>Import Memory</h3>
+                            <p>Drag and drop files or click to select documents for import</p>
+                        </div>
+                        
+                        <div class="import-grid">
+                            <!-- 历史对话 -->
+                            <div class="import-column">
+                                <div class="column-header">
+                                    <h4>Chat History</h4>
+                                    <p>Import conversation logs and chat records</p>
+                                </div>
+                                <div class="drop-zone" data-type="chat">
+                                    <input type="file" class="file-input" id="chatFileInput" accept=".txt,.json,.csv" multiple>
+                                    <div class="drop-content">
+                                        <div class="drop-icon">📁</div>
+                                        <div class="drop-text">
+                                            <strong>Drop files here</strong><br>
+                                            or <span class="click-text">click to browse</span>
+                                        </div>
+                                        <div class="file-types">TXT, JSON, CSV</div>
+                                    </div>
+                                    <div class="loading-overlay">
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill"></div>
+                                </div>
+                                <div class="progress-text">Processing...</div>
+                            </div>
+                        </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 邮件 -->
+                            <div class="import-column">
+                                <div class="column-header">
+                                    <h4>Email</h4>
+                                    <p>Import email messages and attachments</p>
+                                </div>
+                                <div class="drop-zone" data-type="email">
+                                    <input type="file" class="file-input" id="emailFileInput" accept=".eml,.msg,.mbox,.txt" multiple>
+                                    <div class="drop-content">
+                                        <div class="drop-icon">📁</div>
+                                        <div class="drop-text">
+                                            <strong>Drop files here</strong><br>
+                                            or <span class="click-text">click to browse</span>
+                                        </div>
+                                        <div class="file-types">EML, MSG, MBOX, TXT</div>
+                                    </div>
+                                    <div class="loading-overlay">
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill"></div>
+                                </div>
+                                <div class="progress-text">Processing...</div>
+                            </div>
+                        </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 活动记录 -->
+                            <div class="import-column">
+                                <div class="column-header">
+                                    <h4>Activity Logs</h4>
+                                    <p>Import activity records and event logs</p>
+                                </div>
+                                <div class="drop-zone" data-type="activity">
+                                    <input type="file" class="file-input" id="activityFileInput" accept=".log,.txt,.json" multiple>
+                                    <div class="drop-content">
+                                        <div class="drop-icon">📁</div>
+                                        <div class="drop-text">
+                                            <strong>Drop files here</strong><br>
+                                            or <span class="click-text">click to browse</span>
+                                        </div>
+                                        <div class="file-types">LOG, TXT, JSON</div>
+                                    </div>
+                                    <div class="loading-overlay">
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill"></div>
+                                </div>
+                                <div class="progress-text">Processing...</div>
+                            </div>
+                        </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 其他文档 -->
+                            <div class="import-column">
+                                <div class="column-header">
+                                    <h4>Other Documents</h4>
+                                    <p>Import various document formats</p>
+                                </div>
+                                <div class="drop-zone" data-type="document">
+                                    <input type="file" class="file-input" id="documentFileInput" accept=".pdf,.doc,.docx,.txt,.md" multiple>
+                                    <div class="drop-content">
+                                        <div class="drop-icon">📁</div>
+                                        <div class="drop-text">
+                                            <strong>Drop files here</strong><br>
+                                            or <span class="click-text">click to browse</span>
+                                        </div>
+                                        <div class="file-types">PDF, DOC, DOCX, TXT, MD</div>
+                                    </div>
+                                    <div class="loading-overlay">
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill"></div>
+                                </div>
+                                <div class="progress-text">Processing...</div>
+                            </div>
+                        </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日程管理页面 -->
+        <div class="schedule-panel" id="schedulePanel">
+            <div class="schedule-header">
+                Schedule
+            </div>
+            
+            <!-- 日历主界面 -->
+            <div class="calendar-main" id="calendarMain">
+                <div class="calendar-navigation">
+                    <button class="nav-btn" id="prevMonth">‹</button>
+                    <div class="current-month" id="currentMonth">January 2024</div>
+                    <button class="nav-btn" id="nextMonth">›</button>
+                    <button class="today-btn" id="todayBtn">Today</button>
+                </div>
+                
+                <div class="calendar-grid">
+                    <div class="calendar-header">
+                        <div class="day-header">Sun</div>
+                        <div class="day-header">Mon</div>
+                        <div class="day-header">Tue</div>
+                        <div class="day-header">Wed</div>
+                        <div class="day-header">Thu</div>
+                        <div class="day-header">Fri</div>
+                        <div class="day-header">Sat</div>
+                    </div>
+                    <div class="calendar-body" id="calendarBody">
+                        <!-- 日期格子将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 日期详情页面 -->
+            <div class="date-detail" id="dateDetail" style="display: none;">
+                <div class="date-detail-header">
+                    <button class="back-btn" id="backToCalendar">← Back to Calendar</button>
+                    <div class="selected-date" id="selectedDate">January 15, 2024</div>
+                    <button class="add-event-btn" id="addEventBtn">+ Add Event</button>
+                </div>
+                
+                <div class="events-container" id="eventsContainer">
+                    <div class="no-events" id="noEvents">
+                        <div class="no-events-icon">📅</div>
+                        <div class="no-events-text">No events scheduled for this day</div>
+                        <button class="create-event-btn" id="createEventBtn">Create your first event</button>
+                    </div>
+                    
+                    <div class="events-list" id="eventsList">
+                        <!-- 事件列表将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 添加/编辑事件模态框 -->
+            <div class="event-modal" id="eventModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="modalTitle">Add New Event</h3>
+                        <button class="close-modal" id="closeModal">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="eventForm">
+                            <div class="form-group">
+                                <label for="eventTitle">Event Title</label>
+                                <input type="text" id="eventTitle" name="title" placeholder="Enter event title" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="eventDate">Date</label>
+                                <input type="date" id="eventDate" name="date" required>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="eventStartTime">Start Time</label>
+                                    <input type="time" id="eventStartTime" name="startTime">
+                                </div>
+                                <div class="form-group">
+                                    <label for="eventEndTime">End Time</label>
+                                    <input type="time" id="eventEndTime" name="endTime">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="eventDescription">Description</label>
+                                <textarea id="eventDescription" name="description" placeholder="Event description (optional)" rows="3"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="eventCategory">Category</label>
+                                <select id="eventCategory" name="category">
+                                    <option value="work">Work</option>
+                                    <option value="personal">Personal</option>
+                                    <option value="meeting">Meeting</option>
+                                    <option value="reminder">Reminder</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="cancel-btn" id="cancelEvent">Cancel</button>
+                                <button type="submit" class="save-btn" id="saveEvent">Save Event</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通知中心页面 -->
+        <div class="notification-panel" id="notificationPanel">
+            <div class="notification-header">
+                Notification Center
+                <div class="notification-controls">
+                    <button class="notification-btn" id="markAllReadBtn">Mark All Read</button>
+                    <button class="notification-btn" id="clearAllBtn">Clear All</button>
+                </div>
+            </div>
+            
+            <div class="notification-main">
+                <!-- 左侧通知列表 -->
+                <div class="notification-sidebar">
+                    <!-- 通知过滤器 -->
+                    <div class="notification-filters">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="unread">Unread</button>
+                            <button class="filter-btn" data-filter="report">Report</button>
+                            <button class="filter-btn" data-filter="reminder">Reminder</button>
+                            <button class="filter-btn" data-filter="suggestion">Suggestion</button>
+                        </div>
+
+                    <!-- 通知列表 -->
+                    <div class="notification-list" id="notificationList">
+                        <!-- 系统通知示例 -->
+                        <div class="notification-card unread" data-type="system" data-id="1">
+                            <div class="notification-dot"></div>
+                            <div class="notification-avatar system">🔧</div>
+                            <div class="notification-preview">
+                                <div class="notification-sender">System Update</div>
+                                <div class="notification-time">2 minutes ago</div>
+                                <div class="notification-snippet">GraphMem system updated to v2.1.0...</div>
+                            </div>
+                        </div>
+
+                        <!-- 聊天通知示例 -->
+                        <div class="notification-card unread" data-type="chat" data-id="2">
+                            <div class="notification-dot"></div>
+                            <div class="notification-avatar chat">💬</div>
+                            <div class="notification-preview">
+                                <div class="notification-sender">AI Assistant</div>
+                                <div class="notification-time">5 minutes ago</div>
+                                <div class="notification-snippet">You have a new chat reply waiting...</div>
+                            </div>
+                        </div>
+
+                        <!-- 记忆管理通知示例 -->
+                        <div class="notification-card read" data-type="memory" data-id="3">
+                            <div class="notification-dot"></div>
+                            <div class="notification-avatar memory">🧠</div>
+                            <div class="notification-preview">
+                                <div class="notification-sender">Memory Management</div>
+                                <div class="notification-time">1 hour ago</div>
+                                <div class="notification-snippet">Successfully imported 15 new memory nodes...</div>
+                            </div>
+                        </div>
+
+                        <!-- 日程提醒示例 -->
+                        <div class="notification-card unread" data-type="system" data-id="4">
+                            <div class="notification-dot"></div>
+                            <div class="notification-avatar schedule">📅</div>
+                            <div class="notification-preview">
+                                <div class="notification-sender">Schedule Reminder</div>
+                                <div class="notification-time">30 minutes ago</div>
+                                <div class="notification-snippet">Important meeting starting in 1 hour...</div>
+                            </div>
+                        </div>
+
+                        <!-- 周报提醒示例 -->
+                        <div class="notification-card read" data-type="system" data-id="5">
+                            <div class="notification-dot"></div>
+                            <div class="notification-avatar report">📊</div>
+                            <div class="notification-preview">
+                                <div class="notification-sender">Weekly Report</div>
+                                <div class="notification-time">Yesterday</div>
+                                <div class="notification-snippet">Weekly summary report generated...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 空状态 -->
+                    <div class="notification-empty" id="notificationEmpty" style="display: none;">
+                        <div class="empty-icon">🔕</div>
+                        <div class="empty-text">No Notifications</div>
+                        <div class="empty-subtext">All notifications have been processed</div>
+                    </div>
+                </div>
+
+                <!-- 右侧详情面板 -->
+                <div class="notification-detail" id="notificationDetail">
+                    <div class="detail-placeholder">
+                        <div class="placeholder-icon">📋</div>
+                        <div class="placeholder-text">Select a notification to view details</div>
+                        <div class="placeholder-subtext">Click on any notification from the left panel to see more information</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
