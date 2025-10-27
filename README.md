@@ -1,4 +1,4 @@
-# TASKS
+# TAPE
 
 ## Introduction
 This repository contains the code used in our paper: **TAPE: A Temporal Graph-based Memory System for Personal LLM Agents**. TAPE is a temporal graph-based memory system designed to serve as the memory backbone for personal LLM agents. 
@@ -10,6 +10,7 @@ The demo link for TAPE is https://youtu.be/ndmagVTMzDw
 a 64-bit Linux-based OS; a MacOS
 
 ## Usage
+
 #### How to run
 
 - Step 1: Push the demo-backend part code to the linux server
